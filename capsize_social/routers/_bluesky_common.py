@@ -6,7 +6,11 @@ on the same `BlueskyAccount` row - don't duplicate the lookup and
 authenticated-client logic.
 """
 
-from capsize_bluesky import BlueskyAccountClient, BlueskyAuthError
+from capsize_bluesky import (
+    BlueskyAccountClient,
+    BlueskyAPIError,
+    BlueskyAuthError,
+)
 from fastapi import HTTPException, status
 
 from capsize_social.deps import BoxDep, SessionDep
@@ -36,5 +40,10 @@ def authenticated_client(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Bluesky rejected the stored app password",
+        ) from exc
+    except BlueskyAPIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Bluesky login failed: {exc}",
         ) from exc
     return client

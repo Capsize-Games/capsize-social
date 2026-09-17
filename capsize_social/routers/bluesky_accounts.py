@@ -22,6 +22,7 @@ from capsize_social.schemas import (
     BlueskyAccountOut,
     BlueskyAccountUpdate,
     PostBluesky,
+    UpdateBlueskyProfile,
 )
 
 router = APIRouter(
@@ -144,4 +145,31 @@ def post(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Bluesky post failed: {exc}",
+        ) from exc
+
+
+@router.patch(
+    "/{account_id}/profile", status_code=status.HTTP_204_NO_CONTENT
+)
+def update_profile(
+    account_id: int,
+    body: UpdateBlueskyProfile,
+    session: SessionDep,
+    box: BoxDep,
+) -> None:
+    """Update this account's bio text and/or display name on Bluesky.
+
+    Does not touch avatar/banner images - those aren't handled by
+    this service.
+    """
+    account = get_or_404(session, account_id)
+    client = authenticated_client(account, box)
+    try:
+        client.update_profile(
+            description=body.description, display_name=body.display_name
+        )
+    except BlueskyAPIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Bluesky profile update failed: {exc}",
         ) from exc

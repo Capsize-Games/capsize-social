@@ -46,6 +46,13 @@ class PostBluesky(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
 
 
+class UpdateBlueskyProfile(BaseModel):
+    """Body for PATCH /bluesky-accounts/{id}/profile. Fields optional."""
+
+    description: str | None = Field(default=None, max_length=256)
+    display_name: str | None = Field(default=None, max_length=64)
+
+
 class BlueskyPostOut(BaseModel):
     """One post, as returned by GET /bluesky-accounts/{id}/posts."""
 

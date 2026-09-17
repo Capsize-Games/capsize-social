@@ -109,6 +109,31 @@ def test_refresh_stats(
 
 @patch("capsize_social.routers._bluesky_common.BlueskyAccountClient")
 @patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
+def test_refresh_stats_reports_transient_login_failure(
+    mock_create_cls: MagicMock,
+    mock_auth_cls: MagicMock,
+    client: TestClient,
+    api_headers: dict[str, str],
+) -> None:
+    """A non-auth login failure surfaces as a 502, not a raw 500.
+
+    E.g. a transient upstream API error, not a bad credential.
+    """
+    mock_create_cls.return_value.login.return_value = _stats()
+    account = _create(client, api_headers)
+    mock_auth_cls.return_value.login.side_effect = BlueskyAPIError(
+        "rate limited"
+    )
+
+    response = client.post(
+        f"{ACCOUNTS_URL}/{account['id']}/refresh-stats", headers=api_headers
+    )
+
+    assert response.status_code == 502
+
+
+@patch("capsize_social.routers._bluesky_common.BlueskyAccountClient")
+@patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
 def test_post_succeeds(
     mock_create_cls: MagicMock,
     mock_auth_cls: MagicMock,
@@ -151,6 +176,59 @@ def test_post_reports_api_failure(
     )
 
     assert response.status_code == 502
+
+
+@patch("capsize_social.routers._bluesky_common.BlueskyAccountClient")
+@patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
+def test_update_profile_succeeds(
+    mock_create_cls: MagicMock,
+    mock_auth_cls: MagicMock,
+    client: TestClient,
+    api_headers: dict[str, str],
+) -> None:
+    mock_create_cls.return_value.login.return_value = _stats()
+    account = _create(client, api_headers)
+
+    response = client.patch(
+        f"{ACCOUNTS_URL}/{account['id']}/profile",
+        headers=api_headers,
+        json={"description": "new bio", "display_name": "New Name"},
+    )
+
+    assert response.status_code == 204
+    mock_auth_cls.return_value.update_profile.assert_called_once_with(
+        description="new bio", display_name="New Name"
+    )
+
+
+@patch("capsize_social.routers._bluesky_common.BlueskyAccountClient")
+@patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
+def test_update_profile_reports_api_failure(
+    mock_create_cls: MagicMock,
+    mock_auth_cls: MagicMock,
+    client: TestClient,
+    api_headers: dict[str, str],
+) -> None:
+    mock_create_cls.return_value.login.return_value = _stats()
+    account = _create(client, api_headers)
+    mock_auth_cls.return_value.update_profile.side_effect = BlueskyAPIError(
+        "nope"
+    )
+
+    response = client.patch(
+        f"{ACCOUNTS_URL}/{account['id']}/profile",
+        headers=api_headers,
+        json={"description": "new bio"},
+    )
+
+    assert response.status_code == 502
+
+
+def test_update_profile_requires_api_key(client: TestClient) -> None:
+    response = client.patch(
+        f"{ACCOUNTS_URL}/1/profile", json={"description": "new bio"}
+    )
+    assert response.status_code == 401
 
 
 def test_delete_account(
