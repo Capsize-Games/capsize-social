@@ -17,6 +17,8 @@ from capsize_social.schemas import (
     BlueskyAccountCreate,
     BlueskyAccountOut,
     BlueskyAccountUpdate,
+    BlueskyPostOut,
+    BlueskyPostsPage,
     PostBluesky,
 )
 
@@ -47,6 +49,21 @@ def _login_or_400(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid Bluesky handle or app password",
         ) from exc
+
+
+def _authenticated_client(
+    account: BlueskyAccount, box: BoxDep
+) -> BlueskyAccountClient:
+    app_password = box.decrypt(account.encrypted_app_password)
+    client = BlueskyAccountClient(service=account.pds_host)
+    try:
+        client.login(account.handle, app_password)
+    except BlueskyAuthError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Bluesky rejected the stored app password",
+        ) from exc
+    return client
 
 
 def _apply_stats(account: BlueskyAccount, stats: ProfileStats) -> None:
@@ -129,17 +146,8 @@ def refresh_stats(
 ) -> BlueskyAccount:
     """Pull fresh follower/follows/post counts for one account."""
     account = _get_or_404(session, account_id)
-    app_password = box.decrypt(account.encrypted_app_password)
-    client = BlueskyAccountClient(service=account.pds_host)
-    try:
-        client.login(account.handle, app_password)
-        stats = client.profile_stats()
-    except BlueskyAuthError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Bluesky rejected the stored app password",
-        ) from exc
-
+    client = _authenticated_client(account, box)
+    stats = client.profile_stats()
     _apply_stats(account, stats)
     session.commit()
     session.refresh(account)
@@ -152,18 +160,47 @@ def post(
 ) -> None:
     """Post `text` to Bluesky as this account."""
     account = _get_or_404(session, account_id)
-    app_password = box.decrypt(account.encrypted_app_password)
-    client = BlueskyAccountClient(service=account.pds_host)
+    client = _authenticated_client(account, box)
     try:
-        client.login(account.handle, app_password)
         client.create_post(body.text)
-    except BlueskyAuthError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Bluesky rejected the stored app password",
-        ) from exc
     except BlueskyAPIError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Bluesky post failed: {exc}",
         ) from exc
+
+
+def _fetch_page(
+    client: BlueskyAccountClient, cursor: str | None
+) -> BlueskyPostsPage:
+    try:
+        records, next_cursor = client.list_posts(cursor=cursor)
+    except BlueskyAPIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Bluesky post listing failed: {exc}",
+        ) from exc
+    posts = [
+        BlueskyPostOut(
+            uri=r.uri, cid=r.cid, text=r.text, created_at=r.created_at
+        )
+        for r in records
+    ]
+    return BlueskyPostsPage(posts=posts, cursor=next_cursor)
+
+
+@router.get("/{account_id}/posts", response_model=BlueskyPostsPage)
+def list_posts(
+    account_id: int,
+    session: SessionDep,
+    box: BoxDep,
+    cursor: str | None = None,
+) -> BlueskyPostsPage:
+    """Read one page of this account's own posts, straight from Bluesky.
+
+    Not cached, unlike the stats columns - a safety audit needs the
+    real, current post history, not a snapshot that can drift from it.
+    """
+    account = _get_or_404(session, account_id)
+    client = _authenticated_client(account, box)
+    return _fetch_page(client, cursor)

@@ -46,6 +46,22 @@ class PostBluesky(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
 
 
+class BlueskyPostOut(BaseModel):
+    """One post, as returned by GET /bluesky-accounts/{id}/posts."""
+
+    uri: str
+    cid: str
+    text: str
+    created_at: str
+
+
+class BlueskyPostsPage(BaseModel):
+    """One page of GET /bluesky-accounts/{id}/posts."""
+
+    posts: list[BlueskyPostOut]
+    cursor: str | None
+
+
 class DiscordServerCreate(BaseModel):
     """Body for POST /discord-servers."""
 
