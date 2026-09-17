@@ -47,10 +47,17 @@ class PostBluesky(BaseModel):
 
 
 class UpdateBlueskyProfile(BaseModel):
-    """Body for PATCH /bluesky-accounts/{id}/profile. Fields optional."""
+    """Body for PATCH /bluesky-accounts/{id}/profile. Fields optional.
+
+    `avatar_base64`/`banner_base64` are raw image bytes, base64-encoded
+    - this is a plain JSON API, not multipart, so this is the simplest
+    way to carry binary data through it.
+    """
 
     description: str | None = Field(default=None, max_length=256)
     display_name: str | None = Field(default=None, max_length=64)
+    avatar_base64: str | None = None
+    banner_base64: str | None = None
 
 
 class UpdateBlueskyHandle(BaseModel):

@@ -1,3 +1,4 @@
+import base64
 from unittest.mock import MagicMock, patch
 
 from capsize_bluesky import BlueskyAPIError, BlueskyAuthError, ProfileStats
@@ -197,7 +198,37 @@ def test_update_profile_succeeds(
 
     assert response.status_code == 204
     mock_auth_cls.return_value.update_profile.assert_called_once_with(
-        description="new bio", display_name="New Name"
+        description="new bio",
+        display_name="New Name",
+        avatar=None,
+        banner=None,
+    )
+
+
+@patch("capsize_social.routers._bluesky_common.BlueskyAccountClient")
+@patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
+def test_update_profile_decodes_avatar(
+    mock_create_cls: MagicMock,
+    mock_auth_cls: MagicMock,
+    client: TestClient,
+    api_headers: dict[str, str],
+) -> None:
+    mock_create_cls.return_value.login.return_value = _stats()
+    account = _create(client, api_headers)
+    encoded = base64.b64encode(b"fake-png-bytes").decode()
+
+    response = client.patch(
+        f"{ACCOUNTS_URL}/{account['id']}/profile",
+        headers=api_headers,
+        json={"avatar_base64": encoded},
+    )
+
+    assert response.status_code == 204
+    mock_auth_cls.return_value.update_profile.assert_called_once_with(
+        description=None,
+        display_name=None,
+        avatar=b"fake-png-bytes",
+        banner=None,
     )
 
 

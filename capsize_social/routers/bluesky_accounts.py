@@ -1,5 +1,6 @@
 """CRUD, stats, and one-shot posting for Bluesky accounts."""
 
+import base64
 import datetime
 
 from capsize_bluesky import (
@@ -43,6 +44,11 @@ def _login_or_400(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid Bluesky handle or app password",
         ) from exc
+
+
+def _decode_image(data: str | None) -> bytes | None:
+    """Decode a base64-encoded avatar/banner, or `None` if unset."""
+    return base64.b64decode(data) if data is not None else None
 
 
 def _apply_stats(account: BlueskyAccount, stats: ProfileStats) -> None:
@@ -158,16 +164,15 @@ def update_profile(
     session: SessionDep,
     box: BoxDep,
 ) -> None:
-    """Update this account's bio text and/or display name on Bluesky.
-
-    Does not touch avatar/banner images - those aren't handled by
-    this service.
-    """
+    """Update this account's bio, display name, avatar, and/or banner."""
     account = get_or_404(session, account_id)
     client = authenticated_client(account, box)
     try:
         client.update_profile(
-            description=body.description, display_name=body.display_name
+            description=body.description,
+            display_name=body.display_name,
+            avatar=_decode_image(body.avatar_base64),
+            banner=_decode_image(body.banner_base64),
         )
     except BlueskyAPIError as exc:
         raise HTTPException(
