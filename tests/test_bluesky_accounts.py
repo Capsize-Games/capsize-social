@@ -231,6 +231,66 @@ def test_update_profile_requires_api_key(client: TestClient) -> None:
     assert response.status_code == 401
 
 
+@patch("capsize_social.routers._bluesky_common.BlueskyAccountClient")
+@patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
+def test_update_handle_succeeds(
+    mock_create_cls: MagicMock,
+    mock_auth_cls: MagicMock,
+    client: TestClient,
+    api_headers: dict[str, str],
+) -> None:
+    mock_create_cls.return_value.login.return_value = _stats()
+    account = _create(client, api_headers)
+
+    response = client.post(
+        f"{ACCOUNTS_URL}/{account['id']}/update-handle",
+        headers=api_headers,
+        json={"handle": "alice.example.com"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["handle"] == "alice.example.com"
+    mock_auth_cls.return_value.update_handle.assert_called_once_with(
+        "alice.example.com"
+    )
+
+
+@patch("capsize_social.routers._bluesky_common.BlueskyAccountClient")
+@patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
+def test_update_handle_reports_api_failure(
+    mock_create_cls: MagicMock,
+    mock_auth_cls: MagicMock,
+    client: TestClient,
+    api_headers: dict[str, str],
+) -> None:
+    mock_create_cls.return_value.login.return_value = _stats()
+    account = _create(client, api_headers)
+    mock_auth_cls.return_value.update_handle.side_effect = BlueskyAPIError(
+        "handle not resolvable via DNS"
+    )
+
+    response = client.post(
+        f"{ACCOUNTS_URL}/{account['id']}/update-handle",
+        headers=api_headers,
+        json={"handle": "alice.example.com"},
+    )
+
+    assert response.status_code == 502
+    assert (
+        client.get(
+            f"{ACCOUNTS_URL}/{account['id']}", headers=api_headers
+        ).json()["handle"]
+        == "alice.bsky.social"
+    )
+
+
+def test_update_handle_requires_api_key(client: TestClient) -> None:
+    response = client.post(
+        f"{ACCOUNTS_URL}/1/update-handle", json={"handle": "alice.example.com"}
+    )
+    assert response.status_code == 401
+
+
 def test_delete_account(
     client: TestClient, api_headers: dict[str, str]
 ) -> None:

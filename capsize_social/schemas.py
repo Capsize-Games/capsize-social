@@ -53,6 +53,12 @@ class UpdateBlueskyProfile(BaseModel):
     display_name: str | None = Field(default=None, max_length=64)
 
 
+class UpdateBlueskyHandle(BaseModel):
+    """Body for POST /bluesky-accounts/{id}/update-handle."""
+
+    handle: str = Field(min_length=1, max_length=255)
+
+
 class BlueskyPostOut(BaseModel):
     """One post, as returned by GET /bluesky-accounts/{id}/posts."""
 

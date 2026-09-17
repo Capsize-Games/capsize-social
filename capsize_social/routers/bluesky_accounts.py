@@ -22,6 +22,7 @@ from capsize_social.schemas import (
     BlueskyAccountOut,
     BlueskyAccountUpdate,
     PostBluesky,
+    UpdateBlueskyHandle,
     UpdateBlueskyProfile,
 )
 
@@ -173,3 +174,32 @@ def update_profile(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Bluesky profile update failed: {exc}",
         ) from exc
+
+
+@router.post("/{account_id}/update-handle", response_model=BlueskyAccountOut)
+def update_handle(
+    account_id: int,
+    body: UpdateBlueskyHandle,
+    session: SessionDep,
+    box: BoxDep,
+) -> BlueskyAccount:
+    """Switch this account's Bluesky handle (e.g. to a verified domain).
+
+    The caller must have already published the domain-verification
+    DNS record Bluesky requires - this only calls the AT Protocol
+    identity update, it doesn't check DNS itself. Updates the stored
+    `handle` only after Bluesky confirms the switch.
+    """
+    account = get_or_404(session, account_id)
+    client = authenticated_client(account, box)
+    try:
+        client.update_handle(body.handle)
+    except BlueskyAPIError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Bluesky handle update failed: {exc}",
+        ) from exc
+    account.handle = body.handle
+    session.commit()
+    session.refresh(account)
+    return account
