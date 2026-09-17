@@ -1,11 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from capsize_bluesky import (
-    BlueskyAPIError,
-    BlueskyAuthError,
-    PostRecord,
-    ProfileStats,
-)
+from capsize_bluesky import BlueskyAPIError, BlueskyAuthError, ProfileStats
 from fastapi.testclient import TestClient
 
 ACCOUNTS_URL = "/api/bluesky-accounts"
@@ -90,13 +85,17 @@ def test_create_account_requires_api_key(client: TestClient) -> None:
     assert response.status_code == 401
 
 
+@patch("capsize_social.routers._bluesky_common.BlueskyAccountClient")
 @patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
 def test_refresh_stats(
-    mock_client_cls: MagicMock, client: TestClient, api_headers: dict[str, str]
+    mock_create_cls: MagicMock,
+    mock_auth_cls: MagicMock,
+    client: TestClient,
+    api_headers: dict[str, str],
 ) -> None:
-    mock_client_cls.return_value.login.return_value = _stats()
+    mock_create_cls.return_value.login.return_value = _stats()
     account = _create(client, api_headers)
-    mock_client_cls.return_value.profile_stats.return_value = _stats(
+    mock_auth_cls.return_value.profile_stats.return_value = _stats(
         followers_count=99
     )
 
@@ -108,11 +107,15 @@ def test_refresh_stats(
     assert response.json()["followers_count"] == 99
 
 
+@patch("capsize_social.routers._bluesky_common.BlueskyAccountClient")
 @patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
 def test_post_succeeds(
-    mock_client_cls: MagicMock, client: TestClient, api_headers: dict[str, str]
+    mock_create_cls: MagicMock,
+    mock_auth_cls: MagicMock,
+    client: TestClient,
+    api_headers: dict[str, str],
 ) -> None:
-    mock_client_cls.return_value.login.return_value = _stats()
+    mock_create_cls.return_value.login.return_value = _stats()
     account = _create(client, api_headers)
 
     response = client.post(
@@ -122,18 +125,22 @@ def test_post_succeeds(
     )
 
     assert response.status_code == 204
-    mock_client_cls.return_value.create_post.assert_called_once_with(
+    mock_auth_cls.return_value.create_post.assert_called_once_with(
         "hello world"
     )
 
 
+@patch("capsize_social.routers._bluesky_common.BlueskyAccountClient")
 @patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
 def test_post_reports_api_failure(
-    mock_client_cls: MagicMock, client: TestClient, api_headers: dict[str, str]
+    mock_create_cls: MagicMock,
+    mock_auth_cls: MagicMock,
+    client: TestClient,
+    api_headers: dict[str, str],
 ) -> None:
-    mock_client_cls.return_value.login.return_value = _stats()
+    mock_create_cls.return_value.login.return_value = _stats()
     account = _create(client, api_headers)
-    mock_client_cls.return_value.create_post.side_effect = BlueskyAPIError(
+    mock_auth_cls.return_value.create_post.side_effect = BlueskyAPIError(
         "rate limited"
     )
 
@@ -141,80 +148,6 @@ def test_post_reports_api_failure(
         f"{ACCOUNTS_URL}/{account['id']}/post",
         headers=api_headers,
         json={"text": "hello world"},
-    )
-
-    assert response.status_code == 502
-
-
-@patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
-def test_list_posts_returns_page(
-    mock_client_cls: MagicMock, client: TestClient, api_headers: dict[str, str]
-) -> None:
-    mock_client_cls.return_value.login.return_value = _stats()
-    account = _create(client, api_headers)
-    mock_client_cls.return_value.list_posts.return_value = (
-        [
-            PostRecord(
-                uri="at://did/app.bsky.feed.post/1",
-                cid="cid1",
-                text="hello",
-                created_at="2026-01-01T00:00:00Z",
-            )
-        ],
-        "next-cursor",
-    )
-
-    response = client.get(
-        f"{ACCOUNTS_URL}/{account['id']}/posts", headers=api_headers
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["cursor"] == "next-cursor"
-    assert body["posts"] == [
-        {
-            "uri": "at://did/app.bsky.feed.post/1",
-            "cid": "cid1",
-            "text": "hello",
-            "created_at": "2026-01-01T00:00:00Z",
-        }
-    ]
-    mock_client_cls.return_value.list_posts.assert_called_once_with(
-        cursor=None
-    )
-
-
-@patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
-def test_list_posts_passes_through_cursor(
-    mock_client_cls: MagicMock, client: TestClient, api_headers: dict[str, str]
-) -> None:
-    mock_client_cls.return_value.login.return_value = _stats()
-    account = _create(client, api_headers)
-    mock_client_cls.return_value.list_posts.return_value = ([], None)
-
-    client.get(
-        f"{ACCOUNTS_URL}/{account['id']}/posts",
-        headers=api_headers,
-        params={"cursor": "page-2"},
-    )
-
-    mock_client_cls.return_value.list_posts.assert_called_once_with(
-        cursor="page-2"
-    )
-
-
-@patch("capsize_social.routers.bluesky_accounts.BlueskyAccountClient")
-def test_list_posts_reports_api_failure(
-    mock_client_cls: MagicMock, client: TestClient, api_headers: dict[str, str]
-) -> None:
-    mock_client_cls.return_value.login.return_value = _stats()
-    account = _create(client, api_headers)
-    mock_client_cls.return_value.list_posts.side_effect = BlueskyAPIError(
-        "rate limited"
-    )
-
-    response = client.get(
-        f"{ACCOUNTS_URL}/{account['id']}/posts", headers=api_headers
     )
 
     assert response.status_code == 502

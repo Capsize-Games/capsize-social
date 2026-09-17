@@ -2,7 +2,11 @@
 
 from fastapi import FastAPI
 
-from capsize_social.routers import bluesky_accounts, discord_servers
+from capsize_social.routers import (
+    bluesky_accounts,
+    bluesky_content,
+    discord_servers,
+)
 
 
 def create_app() -> FastAPI:
@@ -15,6 +19,7 @@ def create_app() -> FastAPI:
     """
     app = FastAPI(title="Capsize Social")
     app.include_router(bluesky_accounts.router, prefix="/api")
+    app.include_router(bluesky_content.router, prefix="/api")
     app.include_router(discord_servers.router, prefix="/api")
 
     @app.get("/health")

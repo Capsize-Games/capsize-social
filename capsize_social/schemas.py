@@ -53,6 +53,7 @@ class BlueskyPostOut(BaseModel):
     cid: str
     text: str
     created_at: str
+    reply_parent_uri: str | None = None
 
 
 class BlueskyPostsPage(BaseModel):
@@ -60,6 +61,36 @@ class BlueskyPostsPage(BaseModel):
 
     posts: list[BlueskyPostOut]
     cursor: str | None
+
+
+class BlueskyRepostOut(BaseModel):
+    """One repost, as returned by GET /bluesky-accounts/{id}/reposts."""
+
+    uri: str
+    subject_uri: str
+    created_at: str
+
+
+class BlueskyRepostsPage(BaseModel):
+    """One page of GET /bluesky-accounts/{id}/reposts."""
+
+    reposts: list[BlueskyRepostOut]
+    cursor: str | None
+
+
+class BlueskyPostContextOut(BaseModel):
+    """What GET /bluesky-accounts/{id}/context returns.
+
+    `None` fields mean the referenced post couldn't be resolved (e.g.
+    the other account since deleted it) - a best-effort lookup, not a
+    required one.
+    """
+
+    uri: str
+    text: str | None
+    created_at: str | None
+    author_handle: str | None
+    author_display_name: str | None
 
 
 class DiscordServerCreate(BaseModel):
