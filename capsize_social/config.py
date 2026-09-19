@@ -1,11 +1,19 @@
-"""Runtime settings, read once from the environment."""
+"""Runtime settings, read once from the environment.
 
-from functools import lru_cache
+The base class, the `.env` handling and the per-class cache all come from
+`capsize-commons`; this module only declares what is specific to this
+service. `get_settings` stays a no-argument function because FastAPI
+dependency overrides in the test suite key on it.
+"""
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from __future__ import annotations
+
+from capsize_commons.config import CapsizeSettings
+from capsize_commons.config import get_settings as _cached_settings
+from pydantic_settings import SettingsConfigDict
 
 
-class Settings(BaseSettings):
+class Settings(CapsizeSettings):
     """All configuration this service reads from the environment."""
 
     model_config = SettingsConfigDict(
@@ -27,7 +35,9 @@ class Settings(BaseSettings):
     secret_key: str = ""
 
 
-@lru_cache
 def get_settings() -> Settings:
     """Build Settings from the environment, once per process."""
-    return Settings()
+    return _cached_settings(Settings)
+
+
+__all__ = ["Settings", "get_settings"]
