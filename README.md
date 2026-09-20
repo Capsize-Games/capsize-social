@@ -1,5 +1,13 @@
 # capsize-social
 
+## Fleet boundary
+
+This service adopts shared settings, database, API-key, and health primitives
+while retaining provider-specific moderation, posting, credential encryption,
+and deployment behavior. Its boundary and the unavailable published Bluesky
+consumer pin are documented in
+[`docs/FLEET_CONSOLIDATION.md`](docs/FLEET_CONSOLIDATION.md).
+
 Decoupled social-account connections: credential storage and one-shot
 posting/sending actions for Bluesky and Discord, over HTTP. The
 "connections" counterpart to
