@@ -12,9 +12,9 @@ directly, so the test suite's `dependency_overrides` keep working.
 
 from __future__ import annotations
 
+from capsize_commons.web import check_api_key
 from fastapi import Header, HTTPException, status
 
-from capsize_commons.web import check_api_key
 from capsize_social.deps import SettingsDep
 
 

@@ -1,5 +1,6 @@
 """The FastAPI application."""
 
+from capsize_commons.web import install_health_routes
 from fastapi import FastAPI
 
 from capsize_social.routers import (
@@ -22,10 +23,7 @@ def create_app() -> FastAPI:
     app.include_router(bluesky_content.router, prefix="/api")
     app.include_router(discord_servers.router, prefix="/api")
 
-    @app.get("/health")
-    def health() -> dict[str, bool]:
-        """Report liveness for container healthchecks."""
-        return {"ok": True}
+    install_health_routes(app, health_body={"ok": True})
 
     return app
 
