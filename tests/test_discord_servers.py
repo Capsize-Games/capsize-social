@@ -45,8 +45,7 @@ def test_create_server_rejects_bad_token(
     client: TestClient, api_headers: dict[str, str]
 ) -> None:
     with patch(
-        "capsize_social.routers.discord_servers.discord_client"
-        ".validate_token",
+        "capsize_social.routers.discord_servers.discord_client.validate_token",
         side_effect=DiscordError("bad token"),
     ):
         response = client.post(
@@ -67,8 +66,7 @@ def test_send_message_uses_default_test_channel(
 ) -> None:
     server = _create(client, api_headers)
     with patch(
-        "capsize_social.routers.discord_servers.discord_client"
-        ".send_message"
+        "capsize_social.routers.discord_servers.discord_client.send_message"
     ) as mock_send:
         response = client.post(
             f"{SERVERS_URL}/{server['id']}/send-message",
@@ -84,8 +82,7 @@ def test_send_message_uses_explicit_channel(
 ) -> None:
     server = _create(client, api_headers)
     with patch(
-        "capsize_social.routers.discord_servers.discord_client"
-        ".send_message"
+        "capsize_social.routers.discord_servers.discord_client.send_message"
     ) as mock_send:
         client.post(
             f"{SERVERS_URL}/{server['id']}/send-message",

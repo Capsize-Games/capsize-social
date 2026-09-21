@@ -10,28 +10,28 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+    # This private repository uses the workstation queue and its scoped runner.
+    runs-on: [self-hosted, Linux, X64, capsize-social-ci]
+    env:
+      PATH: /home/joe/.local/bin:/usr/local/bin:/usr/bin:/bin
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
       - name: Install
         run: |
-          python -m pip install --upgrade pip
-          pip install "capsize-bluesky @ git+https://github.com/Capsize-Games/capsize-bluesky.git@main"
-          pip install -e ".[dev]"
+          uv venv .venv
+          uv pip install --no-sources --python .venv/bin/python \
+            "capsize-bluesky @ git+https://github.com/Capsize-Games/capsize-bluesky.git@main" \
+            -e ".[dev]"
 
       - name: Lint
-        run: ruff check capsize_social tests migrations
+        run: .venv/bin/ruff check capsize_social tests migrations
 
       - name: Types
-        run: mypy capsize_social
+        run: .venv/bin/mypy capsize_social
 
       - name: Tests
-        run: pytest -q
+        run: .venv/bin/pytest -q
+
+      - name: Build
+        run: uv build

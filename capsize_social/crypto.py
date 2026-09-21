@@ -17,6 +17,4 @@ class SecretBox:
 
     def decrypt(self, ciphertext: str) -> str:
         """Decrypt a value previously returned by `encrypt`."""
-        return self._fernet.decrypt(ciphertext.encode("utf-8")).decode(
-            "utf-8"
-        )
+        return self._fernet.decrypt(ciphertext.encode("utf-8")).decode("utf-8")

@@ -61,9 +61,7 @@ def _apply_stats(account: BlueskyAccount, stats: ProfileStats) -> None:
 @router.get("", response_model=list[BlueskyAccountOut])
 def list_accounts(session: SessionDep) -> list[BlueskyAccount]:
     """List all Bluesky accounts, with their last-cached stats."""
-    return list(
-        session.query(BlueskyAccount).order_by(BlueskyAccount.label)
-    )
+    return list(session.query(BlueskyAccount).order_by(BlueskyAccount.label))
 
 
 @router.post(
@@ -155,9 +153,7 @@ def post(
         ) from exc
 
 
-@router.patch(
-    "/{account_id}/profile", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.patch("/{account_id}/profile", status_code=status.HTTP_204_NO_CONTENT)
 def update_profile(
     account_id: int,
     body: UpdateBlueskyProfile,

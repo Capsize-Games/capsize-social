@@ -22,9 +22,7 @@ def _headers(bot_token: str) -> dict[str, str]:
 
 def validate_token(bot_token: str) -> str:
     """Confirm `bot_token` is valid. Returns the bot's own username."""
-    response = httpx.get(f"{API_BASE}/users/@me", headers=_headers(
-        bot_token
-    ))
+    response = httpx.get(f"{API_BASE}/users/@me", headers=_headers(bot_token))
     if response.status_code != 200:
         raise DiscordError("Invalid bot token")
     return str(response.json()["username"])
@@ -41,9 +39,7 @@ def get_member_count(bot_token: str, guild_id: str) -> int:
         params={"with_counts": "true"},
     )
     if response.status_code != 200:
-        raise DiscordError(
-            "Could not read guild — is the bot invited to it?"
-        )
+        raise DiscordError("Could not read guild — is the bot invited to it?")
     return int(response.json()["approximate_member_count"])
 
 
